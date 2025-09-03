@@ -1,0 +1,540 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: gurobi-manager-operator
+    control-plane: controller-manager
+  name: gurobi-manager-operator-system
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.16.1
+  name: autoscalers.scalers.gurobi.com
+spec:
+  group: scalers.gurobi.com
+  names:
+    kind: AutoScaler
+    listKind: AutoScalerList
+    plural: autoscalers
+    singular: autoscaler
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: AutoScaler is the Schema for the autoscalers API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: AutoScalerSpec defines the desired state of AutoScaler
+            properties:
+              accessId:
+                description: AccessId is the ID used to access the Gurobi Compute
+                  service.
+                type: string
+              accessIdSecretRef:
+                description: AccessIdSecretRef is a reference to a secret that contains
+                  the access ID for the Gurobi Cluster Manager.
+                properties:
+                  key:
+                    description: Key within the secret
+                    type: string
+                  name:
+                    description: Name of the secret
+                    type: string
+                required:
+                - key
+                - name
+                type: object
+              errorRequeueInterval:
+                default: 10
+                description: ErrorRequeueInterval is the interval in seconds at which
+                  the autoscaler will re-evaluate the scaling conditions in case of
+                  an error.
+                format: int64
+                maximum: 3600
+                minimum: 1
+                type: integer
+              manager:
+                default: http://gurobi-manager.default.svc.cluster.local:61080
+                description: Manager is the URL of the Cluster Manager that the autoscaler
+                  will connect to. You can use the service default URL (http://gurobi-manager.default.svc.cluster.local:61080)
+                  or a specific URL.
+                format: uri
+                type: string
+              maxReplicas:
+                description: MaxReplicas is the maximum number of replicas that the
+                  autoscaler will scale up to.
+                format: int32
+                type: integer
+              minReplicas:
+                description: MinReplicas is the minimum number of replicas that the
+                  autoscaler will maintain.
+                format: int32
+                minimum: 1
+                type: integer
+              nodeStopMaxWaitTime:
+                default: 600
+                description: |-
+                  NodeStopMaxWaitTime is the maximum (in minutes) time to wait for a node to stop before considering it failed. Default is 120 minutes.
+                  This is useful to avoid waiting indefinitely for a node to stop, especially in cases where the node is stuck or unresponsive.
+                  If set to -1, the autoscaler will wait indefinitely for the node to stop.
+                format: int32
+                minimum: -1
+                type: integer
+              requeueInterval:
+                default: 30
+                description: RequeueInterval is the interval in seconds at which the
+                  autoscaler will re-evaluate the scaling conditions.
+                format: int64
+                maximum: 3600
+                minimum: 1
+                type: integer
+              scaleDownRules:
+                description: ScaleUpRules defines the rules for scaling down the number
+                  of replicas based on the number of queued jobs and idle nodes.
+                properties:
+                  maxIdleTime:
+                    default: 10
+                    description: |-
+                      MaxIdleTime is the maximum time in minutes that a node can be idle before it is scaled down. Use -1 or omit this field to disable scaling down based on idle time.
+                      If set to -1, the autoscaler will not scale down idle nodes.
+                    minimum: -1
+                    type: integer
+                  minQueuedJobs:
+                    description: MinQueuedJobs is the min number of jobs that can
+                      be queued before scaling down. Use 0 or omit this field to disable
+                      scaling down based on queued jobs.
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  minQueuedWaitingTime:
+                    description: MinQueuedWaitingTime is the min waiting time in seconds
+                      for a job to be queued before scaling down. Use 0 or omit this
+                      field to disable scaling down based on queued waiting time.
+                    format: int64
+                    minimum: 0
+                    type: integer
+                required:
+                - minQueuedJobs
+                type: object
+              scaleUpRules:
+                description: ScaleUpRules defines the rules for scaling up the number
+                  of replicas based on the number of queued jobs.
+                properties:
+                  maxQueuedJobs:
+                    description: MaxQueuedJobs is the maximum number of jobs that
+                      can be queued before scaling up. Use 0 or omit this field to
+                      disable scaling up based on queued jobs.
+                    format: int32
+                    minimum: 0
+                    type: integer
+                  maxQueuedWaitingTime:
+                    description: MaxQueuedWaitingTime is the max waiting time in seconds
+                      for a job to be queued before scaling up. Use 0 or omit this
+                      field to disable scaling up based on queued waiting time.
+                    format: int64
+                    minimum: 0
+                    type: integer
+                type: object
+              scalingOperationMaxWaitTime:
+                default: 0
+                description: |-
+                  ScalingOperationMaxWaitTime is the maximum (in minutes) time to wait for a scaling operation to complete before considering it failed.
+                  This is useful to avoid waiting indefinitely for a scaling operation to complete, especially in cases where the operation is stuck or unresponsive.
+                  If set to 0, NodeStopMaxWaitTime will be used as the default value.
+                  If set to -1, the autoscaler will wait indefinitely for the scaling operation to complete.
+                format: int32
+                minimum: -1
+                type: integer
+              secret:
+                description: Secret is the secret key used to access the Gurobi Compute
+                  service.
+                type: string
+              secretRef:
+                description: SecretRef is a reference to a secret that contains the
+                  secret key for the Gurobi Cluster Manager.
+                properties:
+                  key:
+                    description: Key within the secret
+                    type: string
+                  name:
+                    description: Name of the secret
+                    type: string
+                required:
+                - key
+                - name
+                type: object
+              targetRef:
+                properties:
+                  name:
+                    type: string
+                  namespace:
+                    type: string
+                required:
+                - name
+                - namespace
+                type: object
+            required:
+            - manager
+            - maxReplicas
+            - minReplicas
+            - scaleDownRules
+            - scaleUpRules
+            - targetRef
+            type: object
+          status:
+            description: AutoScalerStatus defines the observed state of AutoScaler
+            properties:
+              currentReplicas:
+                format: int32
+                type: integer
+              desiredReplicas:
+                format: int32
+                type: integer
+              isScaling:
+                type: boolean
+              scalingStartTime:
+                format: date-time
+                type: string
+            required:
+            - currentReplicas
+            - desiredReplicas
+            - isScaling
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: gurobi-manager-operator
+  name: gurobi-manager-operator-controller-manager
+  namespace: gurobi-manager-operator-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: gurobi-manager-operator
+  name: gurobi-manager-operator-leader-election-role
+  namespace: gurobi-manager-operator-system
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: gurobi-manager-operator
+  name: gurobi-manager-operator-autoscaler-editor-role
+rules:
+- apiGroups:
+  - scalers.gurobi.com
+  resources:
+  - autoscalers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - scalers.gurobi.com
+  resources:
+  - autoscalers/status
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: gurobi-manager-operator
+  name: gurobi-manager-operator-autoscaler-viewer-role
+rules:
+- apiGroups:
+  - scalers.gurobi.com
+  resources:
+  - autoscalers
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - scalers.gurobi.com
+  resources:
+  - autoscalers/status
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: gurobi-manager-operator-manager-role
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - delete
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apps
+  - scalers.gurobi.com
+  resources:
+  - autoscalers/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - scalers.gurobi.com
+  resources:
+  - autoscalers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - scalers.gurobi.com
+  resources:
+  - autoscalers/status
+  verbs:
+  - get
+  - patch
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: gurobi-manager-operator-metrics-auth-role
+rules:
+- apiGroups:
+  - authentication.k8s.io
+  resources:
+  - tokenreviews
+  verbs:
+  - create
+- apiGroups:
+  - authorization.k8s.io
+  resources:
+  - subjectaccessreviews
+  verbs:
+  - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: gurobi-manager-operator-metrics-reader
+rules:
+- nonResourceURLs:
+  - /metrics
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: gurobi-manager-operator
+  name: gurobi-manager-operator-leader-election-rolebinding
+  namespace: gurobi-manager-operator-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: gurobi-manager-operator-leader-election-role
+subjects:
+- kind: ServiceAccount
+  name: gurobi-manager-operator-controller-manager
+  namespace: gurobi-manager-operator-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: gurobi-manager-operator
+  name: gurobi-manager-operator-manager-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: gurobi-manager-operator-manager-role
+subjects:
+- kind: ServiceAccount
+  name: gurobi-manager-operator-controller-manager
+  namespace: gurobi-manager-operator-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: gurobi-manager-operator-metrics-auth-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: gurobi-manager-operator-metrics-auth-role
+subjects:
+- kind: ServiceAccount
+  name: gurobi-manager-operator-controller-manager
+  namespace: gurobi-manager-operator-system
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: gurobi-manager-operator
+    control-plane: controller-manager
+  name: gurobi-manager-operator-controller-manager-metrics-service
+  namespace: gurobi-manager-operator-system
+spec:
+  ports:
+  - name: https
+    port: 8443
+    protocol: TCP
+    targetPort: 8443
+  selector:
+    control-plane: controller-manager
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: gurobi-manager-operator
+    control-plane: controller-manager
+  name: gurobi-manager-operator-controller-manager
+  namespace: gurobi-manager-operator-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      control-plane: controller-manager
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: gurobi-manager-operator
+      labels:
+        control-plane: controller-manager
+    spec:
+      containers:
+      - args:
+        - --metrics-bind-address=:8443
+        - --leader-elect
+        - --health-probe-bind-address=:8081
+        command:
+        - /manager
+        image: gurobi/manager-operator:1.0.0
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        name: gurobi-manager-operator
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: 500m
+            memory: 128Mi
+          requests:
+            cpu: 10m
+            memory: 64Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+      securityContext:
+        runAsNonRoot: true
+      serviceAccountName: gurobi-manager-operator-controller-manager
+      terminationGracePeriodSeconds: 10
