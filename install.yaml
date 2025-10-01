@@ -74,6 +74,11 @@ spec:
                 maximum: 3600
                 minimum: 1
                 type: integer
+              group:
+                default: ""
+                description: Group is the name of the group that the autoscaler belongs
+                  to. Used to scale based on the number of nodes in the same group.
+                type: string
               manager:
                 default: http://gurobi-manager.default.svc.cluster.local:61080
                 description: Manager is the URL of the Cluster Manager that the autoscaler

@@ -15,55 +15,61 @@
 
 ## Overview
 
-The Gurobi AutoScaler Operator is a Kubernetes operator that provides intelligent auto-scaling capabilities for Gurobi Compute Server deployments. It monitors job queue metrics and node utilization through the Gurobi Manager API and automatically scales compute nodes up or down based on configurable rules.
+The Gurobi AutoScaler Operator is a Kubernetes operator that provides intelligent auto-scaling capabilities for Gurobi Compute Server deployments within a Gurobi cluster. It monitors optimization job queue metrics and compute node utilization through the Gurobi Cluster Manager API and automatically scales compute nodes up or down based on configurable rules tailored for mathematical optimization workloads.
 
 ### Key Features
 
-- **Intelligent Scaling**: Scales based on job queue metrics, waiting times, and node utilization
-- **Graceful Shutdown**: Properly drains nodes before termination to avoid job interruption
-- **Timeout Management**: Configurable timeouts with fallback mechanisms
-- **License Validation**: Prevents scaling when license issues are detected
-- **Secure Credentials**: Supports both Kubernetes secrets and direct credential configuration
-- **Error Recovery**: Robust error handling with exponential backoff
+- **Optimization-Aware Scaling**: Scales based on optimization job queue metrics, solver waiting times, and compute node utilization
+- **Graceful Job Handling**: Properly drains nodes before termination to avoid interrupting long-running optimization jobs
+- **Timeout Management**: Configurable timeouts with fallback mechanisms for complex optimization problems
+- **Gurobi License Validation**: Prevents scaling when Gurobi license issues are detected to ensure solver availability
+- **Node Group Support**: Manages different node groups within the same Gurobi cluster for workload segmentation
+- **Secure Cluster Access**: Supports both Kubernetes secrets and direct credential configuration for Gurobi Manager API
+- **Solver-Optimized Recovery**: Robust error handling with exponential backoff designed for optimization workloads
 
 ### How It Works
 
-1. **Monitoring**: The operator continuously monitors Gurobi cluster metrics via the Manager API
-2. **Decision Making**: Evaluates scaling rules based on queue size, waiting times, and node states
-3. **Scaling Actions**: Performs scale up/down operations while respecting min/max replica bounds
-4. **Graceful Operations**: During scale down, properly stops node processing and waits for job completion
+1. **Cluster Monitoring**: The operator continuously monitors Gurobi cluster metrics via the Cluster Manager API
+2. **Optimization-Based Decisions**: Evaluates scaling rules based on job queue size, solver waiting times, and compute node states
+3. **Intelligent Scaling Actions**: Performs scale up/down operations while respecting min/max replica bounds and optimization job requirements
+4. **Solver-Safe Operations**: During scale down, properly stops node processing and waits for optimization job completion
 
 ## Architecture
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   AutoScaler    │    │  Gurobi Manager │    │ Gurobi Compute  │
-│   Controller    │◄──►│      API        │◄──►│     Nodes       │
-│                 │    │                 │    │                 │
+│   AutoScaler    │    │ Gurobi Cluster  │    │ Gurobi Compute  │
+│   Controller    │◄──►│    Manager      │◄──►│     Nodes       │
+│                 │    │      API        │    │   (Solvers)     │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
          │                       │                       │
          │                       │                       │
          ▼                       ▼                       ▼
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Kubernetes    │    │    MongoDB      │    │   Job Queue     │
-│   Deployment    │    │   (Persistence) │    │   & Metrics     │
+│   Kubernetes    │    │    MongoDB      │    │ Optimization    │
+│   Deployment    │    │   (Cluster      │    │ Job Queue &     │
+│                 │    │   Persistence)  │    │   Metrics       │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
 ### Components
 
-- **AutoScaler Controller**: Kubernetes controller that reconciles AutoScaler resources
-- **Gurobi Manager**: Central coordinator providing metrics API and job management
-- **Gurobi Compute Nodes**: Worker nodes that process optimization jobs
-- **MongoDB**: Persistence layer for Manager state and job history
+- **AutoScaler Controller**: Kubernetes controller that reconciles AutoScaler resources and manages Gurobi compute node scaling
+- **Gurobi Cluster Manager**: Central coordinator providing cluster metrics API, optimization job management, and node registration
+- **Gurobi Compute Nodes**: Solver nodes that process mathematical optimization jobs using Gurobi optimizer
+- **MongoDB**: Persistence layer for Cluster Manager state, optimization job history, and node group configurations
+- **Optimization Job Queue**: Queue management system for distributing optimization problems across available compute nodes
 
 ## Installation
 
 ### Prerequisites
 
-- Kubernetes cluster (v1.19+)
-- Gurobi license file
-- Docker registry access (for pulling Gurobi images)
+- Kubernetes cluster (v1.19+) with sufficient resources for optimization workloads
+- Valid Gurobi license file
+- Gurobi Cluster Manager deployment (for coordinating compute nodes)
+- Docker registry access (for pulling Gurobi container images)
+- MongoDB instance (for Cluster Manager persistence)
+- Network connectivity between AutoScaler, Cluster Manager, and compute nodes
 
 ### Quick Start
 
@@ -105,18 +111,18 @@ This creates:
 - RBAC permissions
 - Operator deployment in `gurobi-manager-operator-system` namespace
 
-#### 2. Credentials Setup
+#### 2. Gurobi Cluster Manager Credentials Setup
 
-Create credentials for Manager API access:
+Create credentials for Gurobi Cluster Manager API access:
 
 ```bash
 # Create namespace if it doesn't exist
 kubectl create namespace gurobi-manager-operator-system
 
-# Create credentials secret
+# Create credentials secret for Cluster Manager API authentication
 kubectl create secret generic autoscaler-credentials \
-  --from-literal=accessId="your-access-id" \
-  --from-literal=secret="your-secret-key" \
+  --from-literal=accessId="your-cluster-manager-access-id" \
+  --from-literal=secret="your-cluster-manager-secret-key" \
   -n gurobi-manager-operator-system
 ```
 
@@ -186,29 +192,29 @@ spec:
 
 ### Configuration Parameters
 
-#### Manager URL
+#### Gurobi Cluster Manager Connection
 
-| Parameter           | Type     | Description                               | Required |
-|---------------------|----------|-------------------------------------------|---------|
-| `manager` | `string` | URL of the Gurobi Cluster Manager API endpoint.  | Yes     |
+| Parameter | Type     | Description                                                                                                      | Required |
+|-----------|----------|------------------------------------------------------------------------------------------------------------------|----------|
+| `manager` | `string` | URL of the Gurobi Cluster Manager API endpoint for accessing cluster metrics and controlling optimization nodes | Yes      |
 
-#### Authentication
+#### Gurobi Cluster Manager Authentication
 
-| Parameter           | Type           | Description                               | Required |
-|---------------------|----------------|-------------------------------------------|----------|
-| `accessIdSecretRef` | `SecretKeyRef` | Reference to secret containing access ID  | Yes*     |
-| `secretRef`         | `SecretKeyRef` | Reference to secret containing secret key | Yes*     |
-| `accessId`          | `string`       | Direct access ID value                    | Yes*     |
-| `secret`            | `string`       | Direct secret value                       | Yes*     |
+| Parameter           | Type           | Description                                                                    | Required |
+|---------------------|----------------|--------------------------------------------------------------------------------|----------|
+| `accessIdSecretRef` | `SecretKeyRef` | Reference to secret containing Cluster Manager API access ID                  | Yes*     |
+| `secretRef`         | `SecretKeyRef` | Reference to secret containing Cluster Manager API secret key                 | Yes*     |
+| `accessId`          | `string`       | Direct Cluster Manager API access ID value                                    | Yes*     |
+| `secret`            | `string`       | Direct Cluster Manager API secret value                                       | Yes*     |
 
 *Either secret references OR direct values must be provided
 
-#### Replica Bounds
+#### Gurobi Compute Node Scaling Bounds
 
-| Parameter     | Type    | Description                     | Default | Validation     |
-|---------------|---------|---------------------------------|---------|----------------|
-| `minReplicas` | `int32` | Minimum number of compute nodes | -       | >= 1           |
-| `maxReplicas` | `int32` | Maximum number of compute nodes | -       | >= minReplicas |
+| Parameter     | Type    | Description                                              | Default | Validation     |
+|---------------|---------|----------------------------------------------------------|---------|----------------|
+| `minReplicas` | `int32` | Minimum number of Gurobi compute nodes (solver engines) | -       | >= 1           |
+| `maxReplicas` | `int32` | Maximum number of Gurobi compute nodes (solver engines) | -       | >= minReplicas |
 
 #### Target Reference
 
@@ -217,20 +223,26 @@ spec:
 | `targetRef.name`      | `string` | Target deployment name      | Yes      |
 | `targetRef.namespace` | `string` | Target deployment namespace | Yes      |
 
-#### Scale Up Rules
+#### Node Group Management
 
-| Parameter              | Type    | Description                                                                             | Default | Validation |
-|------------------------|---------|-----------------------------------------------------------------------------------------|---------|------------|
-| `maxQueuedJobs`        | `int32` | Max queued jobs before scale up, 0 = unlimited queue allowed                            | 0       | >= 0       |
-| `maxQueuedWaitingTime` | `int64` | Max wait time (seconds) before scale up, Set to 0 to disable waiting time-based scaling | 0       | >= 0       |
+| Parameter | Type     | Description                                                                                                                                              | Required |
+|-----------|----------|----------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
+| `group`   | `string` | Gurobi cluster node group identifier. When specified, the autoscaler only monitors and scales nodes belonging to this specific group within the cluster | No       |
 
-#### Scale Down Rules
+#### Optimization Job Scale Up Rules
 
-| Parameter              | Type    | Description                                                                                                                                                                   | Default | Validation |
-|------------------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|------------|
-| `minQueuedJobs`        | `int32` | Min queued jobs for scale down, Use 0 or omit this field to disable scaling down based on queued jobs.                                                                        | 0       | >= 0       |
-| `minQueuedWaitingTime` | `int64` | Min wait time (seconds) for scale down, Use 0 or omit this field to disable scaling down based on queued waiting time.                                                        | 0       | >= 0       |
-| `maxIdleTime`          | `int`   | Max idle time (minutes) before scale down, Use -1 or omit this field to disable scaling down based on idle time. If set to -1, the autoscaler will not scale down idle nodes. | 10      | >= -1      |
+| Parameter              | Type    | Description                                                                                                          | Default | Validation |
+|------------------------|---------|----------------------------------------------------------------------------------------------------------------------|---------|------------|
+| `maxQueuedJobs`        | `int32` | Max queued optimization jobs before scale up, 0 = unlimited queue allowed                                           | 0       | >= 0       |
+| `maxQueuedWaitingTime` | `int64` | Max wait time (seconds) for optimization jobs before scale up, Set to 0 to disable waiting time-based scaling      | 0       | >= 0       |
+
+#### Optimization Job Scale Down Rules
+
+| Parameter              | Type    | Description                                                                                                                                                                                                        | Default | Validation |
+|------------------------|---------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|------------|
+| `minQueuedJobs`        | `int32` | Min queued optimization jobs for scale down, Use 0 or omit this field to disable scaling down based on queued jobs.                                                                                              | 0       | >= 0       |
+| `minQueuedWaitingTime` | `int64` | Min wait time (seconds) for optimization jobs for scale down, Use 0 or omit this field to disable scaling down based on queued waiting time.                                                                     | 0       | >= 0       |
+| `maxIdleTime`          | `int`   | Max idle time (minutes) before scaling down compute nodes, Use -1 or omit this field to disable scaling down based on idle time. If set to -1, the autoscaler will not scale down idle optimization nodes. | 10      | >= -1      |
 
 #### Timeouts and Intervals
 
@@ -430,6 +442,103 @@ spec:
   nodeStopMaxWaitTime: 10
   requeueInterval: 15
 ```
+
+### Group-Based Configuration
+
+The group feature allows you to create multiple AutoScaler instances that operate on different node groups within the same Gurobi cluster. This enables fine-grained scaling control for different workload types or priorities.
+
+```yaml
+# Production workload autoscaler
+apiVersion: scalers.gurobi.com/v1alpha1
+kind: AutoScaler
+metadata:
+  name: production-autoscaler
+  namespace: gurobi-manager-operator-system
+spec:
+  accessIdSecretRef:
+    name: autoscaler-credentials
+    key: accessId
+  secretRef:
+    name: autoscaler-credentials
+    key: secret
+
+  # Conservative scaling for production workloads
+  minReplicas: 2
+  maxReplicas: 6
+
+  targetRef:
+    name: gurobi-compute
+    namespace: default
+
+  manager: "http://gurobi-manager.default.svc.cluster.local:61080"
+
+  # Only operate on nodes in group "grp1"
+  group: "grp1"
+
+  scaleUpRules:
+    maxQueuedJobs: 3
+    maxQueuedWaitingTime: 15
+
+  scaleDownRules:
+    minQueuedJobs: 2
+    minQueuedWaitingTime: 10
+    maxIdleTime: 2
+
+  requeueInterval: 30
+
+---
+# Development workload autoscaler
+apiVersion: scalers.gurobi.com/v1alpha1
+kind: AutoScaler
+metadata:
+  name: development-autoscaler
+  namespace: gurobi-manager-operator-system
+spec:
+  accessIdSecretRef:
+    name: autoscaler-credentials
+    key: accessId
+  secretRef:
+    name: autoscaler-credentials
+    key: secret
+
+  # Aggressive scaling for development workloads
+  minReplicas: 1
+  maxReplicas: 3
+
+  targetRef:
+    name: gurobi-compute-grp2
+    namespace: default
+
+  manager: "http://gurobi-manager.default.svc.cluster.local:61080"
+
+  # Only operate on nodes in group "grp2"
+  group: "grp2"
+
+  scaleUpRules:
+    maxQueuedJobs: 2
+    maxQueuedWaitingTime: 15
+
+  scaleDownRules:
+    minQueuedJobs: 0
+    maxIdleTime: 1
+
+  requeueInterval: 30
+```
+
+#### Gurobi Cluster Node Group Benefits
+
+- **Node Group Segmentation**: Different scaling policies for distinct node groups within the Gurobi cluster
+- **Compute Resource Management**: Dedicated scaling control for different types of optimization workloads
+- **Cluster Performance Tuning**: Independent scaling responsiveness for high-priority vs. batch processing node groups
+- **Multi-Tenant Cluster Organization**: Separate autoscaling control for different teams or applications using the same cluster
+
+#### Gurobi Cluster Node Group Configuration
+
+1. **Node Group Registration**: Gurobi compute nodes must register with the cluster manager using specific group identifiers
+2. **Target Deployment Mapping**: Each node group typically corresponds to a different Kubernetes deployment of compute nodes
+3. **Shared Cluster Manager**: All node groups operate under the same Gurobi Cluster Manager instance
+4. **Independent Autoscaling**: Each AutoScaler monitors and scales only nodes belonging to its assigned group within the cluster
+5. **Job Distribution**: The cluster manager handles job distribution to appropriate node groups based on group configuration
 
 ## Scaling Behavior
 
