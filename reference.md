@@ -34,6 +34,10 @@ The Gurobi AutoScaler Operator is a Kubernetes operator that provides intelligen
 3. **Intelligent Scaling Actions**: Performs scale up/down operations while respecting min/max replica bounds and optimization job requirements
 4. **Solver-Safe Operations**: During scale down, properly stops node processing and waits for optimization job completion
 
+### Limitations
+
+- **Workers Scaling Not Supported**: The AutoScaler operator only supports scaling of Gurobi compute nodes. Worker scaling is not currently supported. All scaling operations target compute node deployments that run optimization solvers.
+
 ## Architecture
 
 ```
@@ -541,6 +545,8 @@ spec:
 5. **Job Distribution**: The cluster manager handles job distribution to appropriate node groups based on group configuration
 
 ## Scaling Behavior
+
+**Note**: The AutoScaler only scales Gurobi compute nodes. Workers scaling is not supported.
 
 ### Scale Up Decision Logic
 
