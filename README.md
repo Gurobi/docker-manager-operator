@@ -12,11 +12,9 @@ Gurobi images:
 - [gurobi/compute](https://hub.docker.com/r/gurobi/compute): Gurobi Compute Server
 - [gurobi/manager](https://hub.docker.com/r/gurobi/manager): Gurobi Cluster Manager
 
-# Supported tags and respective Dockerfile links
+# Supported tags
 
-
-
-This Docker image is currently only available as a beta.
+* [0.0.5, latest](https://github.com/Gurobi/docker-manager-operator/blob/main/0.0.5)
 
 # Quick reference (cont.)
 
