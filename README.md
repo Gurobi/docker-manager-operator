@@ -1,4 +1,4 @@
-![Logo](https://cdn.gurobi.com/wp-content/uploads/GurobiLogo_Black.svg "Gurobi Optimization")
+![Logo](https://cdn.bfldr.com/KUZMZM51/at/kts6jh5747mxmw5qxzb7vk5z/Horizontal_Default_Gradient_Bk.svg "Gurobi Optimization")
 # Quick reference
 Maintained by: [Gurobi Optimization](https://www.gurobi.com)
 
@@ -14,7 +14,8 @@ Gurobi images:
 
 # Supported tags
 
-* [0.0.5, latest](https://github.com/Gurobi/docker-manager-operator/blob/main/0.0.5)
+* [0.0.6,latest](https://github.com/Gurobi/docker-manager-operator/blob/main/0.0.6)
+* [0.0.5](https://github.com/Gurobi/docker-manager-operator/blob/main/0.0.5)
 
 # Quick reference (cont.)
 
